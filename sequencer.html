@@ -645,19 +645,34 @@ Respond ONLY with valid JSON, no markdown, no backticks, no preamble. Schema:
       messages: [{ role: 'user', content: userMsg }]
     })
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){
+    if(!r.ok){ return r.text().then(function(t){ throw new Error('Worker ' + r.status + ': ' + t); }); }
+    return r.json();
+  })
   .then(function(data){
+    // Surface any API-level error from Worker
+    if(data.error){ throw new Error('API error: ' + data.error); }
     var text = '';
     if(data.content && data.content.length){
       data.content.forEach(function(b){ if(b.type==='text') text += b.text; });
     }
+    if(!text){ throw new Error('Empty response from API. Check Worker logs.'); }
     var clean = text.replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(clean);
+    // Find JSON object in response
+    var jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if(!jsonMatch){ throw new Error('No JSON found in response: ' + clean.slice(0,200)); }
+    var parsed = JSON.parse(jsonMatch[0]);
     callback(parsed);
   })
   .catch(function(err){
-    console.error('API error:', err);
-    callback(getFallback(ctx));
+    console.error('Sequencer error:', err);
+    // Show error visibly instead of silent fallback
+    document.getElementById('procStage').textContent = 'ERROR';
+    document.getElementById('procDetail').textContent = err.message;
+    document.getElementById('procSpinner').style.borderTopColor = '#ef4444';
+    document.getElementById('procBar').style.background = '#ef4444';
+    // Still provide fallback after 2s so user isn't stuck
+    setTimeout(function(){ callback(getFallback(ctx)); }, 2000);
   });
 }
 
