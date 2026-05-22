@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Welcome Gate // Bottleneck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: rgba(15,23,42,0.85);
+    --border: rgba(255,255,255,0.07);
+    --accent: #38bdf8;
+    --accent-dim: rgba(56,189,248,0.12);
+    --accent-border: rgba(56,189,248,0.3);
+    --green: #10b981;
+    --green-dim: rgba(16,185,129,0.12);
+    --green-border: rgba(16,185,129,0.25);
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #475569;
+    --text-dark: #334155;
+    --text-darker: #1e293b;
+    --input-bg: rgba(2,4,8,0.85);
+    --mono: 'DM Mono', 'Courier New', monospace;
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Radial glow */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 300px;
+    background: radial-gradient(ellipse, rgba(56,189,248,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 640px;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(56,189,248,0.08);
+    border: 1px solid rgba(56,189,248,0.2);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  .badge-text {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+    color: #f8fafc;
+  }
+
+  .subhead {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* Step nav */
+  .step-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 2rem;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .step-pip {
+    width: 28px;
+    height: 28px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text-dark);
+    transition: all 0.3s;
+  }
+
+  .step-pip.active {
+    background: rgba(56,189,248,0.15);
+    border-color: rgba(56,189,248,0.5);
+    color: var(--accent);
+  }
+
+  .step-connector {
+    width: 24px;
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+
+  .card.animating {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  /* Stage header */
+  .stage-step {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.4rem;
+  }
+
+  .stage-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.3rem;
+  }
+
+  .stage-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+  }
+
+  /* Inputs */
+  input[type="text"],
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--input-bg);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 2px;
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--mono);
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+    display: block;
+  }
+
+  input[type="text"]:focus,
+  textarea:focus {
+    outline: none;
+    border-color: rgba(56,189,248,0.4);
+  }
+
+  input[type="text"]::placeholder,
+  textarea::placeholder {
+    color: var(--text-dark);
+  }
+
+  textarea {
+    resize: none;
+    line-height: 1.6;
+  }
+
+  input.error {
+    border-color: rgba(239,68,68,0.5);
+  }
+
+  .error-msg {
+    font-size: 10px;
+    color: #ef4444;
+    margin-top: -0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Divider section */
+  .followup-section {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: rgba(56,189,248,0.12);
+    border: 1px solid rgba(56,189,248,0.3);
+    border-radius: 2px;
+    color: var(--accent);
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: rgba(56,189,248,0.05);
+  }
+
+  .btn-primary:not(:disabled):hover {
+    background: rgba(56,189,248,0.2);
+    border-color: rgba(56,189,248,0.5);
+  }
+
+  .skip-link {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-dark);
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .skip-link:hover { color: var(--text-muted); }
+
+  /* Verify overlay */
+  .verify-card {
+    background: rgba(15,23,42,0.9);
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 4px;
+    padding: 3rem 2rem;
+    text-align: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .verify-spinner {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    border: 2px solid rgba(56,189,248,0.2);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.4s;
+  }
+
+  .verify-spinner.done {
+    animation: none;
+    border-color: rgba(16,185,129,0.3);
+    background: rgba(16,185,129,0.15);
+    color: var(--green);
+  }
+
+  .verify-status {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+    transition: color 0.4s;
+  }
+
+  .verify-status.done { color: var(--green); }
+
+  .verify-step-text {
+    font-size: 13px;
+    color: var(--text-muted);
+    min-height: 20px;
+    transition: all 0.3s;
+  }
+
+  .verify-bar-track {
+    background: rgba(255,255,255,0.04);
+    border-radius: 2px;
+    height: 2px;
+    overflow: hidden;
+    margin-top: 2rem;
+  }
+
+  .verify-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.5s ease, background 0.4s;
+  }
+
+  .verify-url-label {
+    margin-top: 1.5rem;
+    font-size: 10px;
+    color: var(--text-darker);
+    letter-spacing: 0.08em;
+  }
+
+  /* Result stage */
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .result-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 2px;
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .result-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--green);
+  }
+
+  .result-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .snapshot-box {
+    background: rgba(16,185,129,0.05);
+    border: 1px solid rgba(16,185,129,0.15);
+    border-radius: 2px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .snapshot-title {
+    font-size: 10px;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+
+  .row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 0.4rem;
+    font-size: 11px;
+  }
+
+  .row-label {
+    color: var(--text-dark);
+    min-width: 110px;
+    flex-shrink: 0;
+  }
+
+  .row-value { color: #94a3b8; }
+  .row-value.highlight { color: var(--green); }
+
+  .payload-header {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .payload-ready { color: var(--accent); }
+
+  textarea.payload {
+    width: 100%;
+    background: #020408;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 2px;
+    padding: 1rem;
+    font-size: 10px;
+    color: var(--accent);
+    line-height: 1.6;
+    font-family: var(--mono);
+    resize: none;
+    cursor: text;
+    margin-bottom: 0;
+  }
+
+  textarea.payload:focus { outline: none; border-color: rgba(56,189,248,0.25); }
+
+  .payload-hint {
+    font-size: 10px;
+    color: var(--text-dark);
+    margin-top: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .result-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn-copy {
+    flex: 1;
+    padding: 10px;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.3);
+    border-radius: 2px;
+    color: var(--accent);
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-copy.copied {
+    background: rgba(16,185,129,0.15);
+    border-color: rgba(16,185,129,0.4);
+    color: var(--green);
+  }
+
+  .btn-reset {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 2px;
+    color: var(--text-dim);
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-reset:hover { border-color: rgba(255,255,255,0.15); color: var(--text-muted); }
+
+  .footer {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 10px;
+    color: var(--text-darker);
+    letter-spacing: 0.08em;
+  }
+
+  /* Stages visibility */
+  .stage { display: none; }
+  .stage.active { display: block; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  @media (max-width: 480px) {
+    .card { padding: 1.25rem; }
+    .verify-card { padding: 2rem 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">
+      <div class="badge-dot"></div>
+      <span class="badge-text">WELCOME GATE // v1.1</span>
+    </div>
+    <h1>Let's capture your brand.</h1>
+    <p class="subhead">Start with whatever you have. We'll work with it.</p>
+  </div>
+
+  <!-- Step nav -->
+  <div class="step-nav" id="stepNav">
+    <div class="step-pip active" id="pip-url">01</div>
+    <div class="step-connector"></div>
+    <div class="step-pip" id="pip-brand">02</div>
+    <div class="step-connector"></div>
+    <div class="step-pip" id="pip-form">03</div>
+  </div>
+
+  <!-- Verify overlay -->
+  <div class="verify-card" id="verifyCard" style="display:none;">
+    <div class="verify-spinner" id="verifySpinner"></div>
+    <div class="verify-status" id="verifyStatus">VERIFYING DOMAIN</div>
+    <div class="verify-step-text" id="verifyStepText">Resolving domain...</div>
+    <div class="verify-bar-track">
+      <div class="verify-bar-fill" id="verifyBar" style="width:25%;"></div>
+    </div>
+    <div class="verify-url-label" id="verifyUrlLabel"></div>
+  </div>
+
+  <!-- Main card -->
+  <div class="card" id="mainCard">
+
+    <!-- Stage: URL -->
+    <div class="stage active" id="stage-url">
+      <div class="stage-step">STEP 01</div>
+      <div class="stage-label">Website URL</div>
+      <div class="stage-sub">Fastest path — paste your site and we handle the rest</div>
+
+      <input type="text" id="urlInput" placeholder="yourbusiness.com" autocomplete="off" />
+      <div class="error-msg" id="urlError" style="display:none;"></div>
+
+      <div class="followup-section">
+        <label for="followUpInput">While we check your site — what do you sell?</label>
+        <input type="text" id="followUpInput" placeholder="e.g. SEO services for local businesses" autocomplete="off" />
+      </div>
+
+      <button class="btn-primary" id="urlSubmitBtn" disabled>VERIFY &amp; CONTINUE →</button>
+      <div class="skip-link" id="skipToBrand">No website — use brand info instead</div>
+    </div>
+
+    <!-- Stage: Brand -->
+    <div class="stage" id="stage-brand">
+      <div class="stage-step">STEP 02</div>
+      <div class="stage-label">Brand Info</div>
+      <div class="stage-sub">No site? Describe your business in your own words</div>
+
+      <textarea id="brandText" placeholder="Tell us what you do, who you help, and what problem you solve..." rows="5"></textarea>
+
+      <button class="btn-primary" id="brandSubmitBtn" disabled>CAPTURE BRAND INFO →</button>
+      <div class="skip-link" id="skipToForm">Prefer to answer two quick questions instead</div>
+    </div>
+
+    <!-- Stage: Form -->
+    <div class="stage" id="stage-form">
+      <div class="stage-step">STEP 03</div>
+      <div class="stage-label">Quick Profile</div>
+      <div class="stage-sub">Two questions. That's it.</div>
+
+      <div style="margin-bottom:1rem;">
+        <label for="formOffer">What do you sell or offer?</label>
+        <input type="text" id="formOffer" placeholder="e.g. Business coaching for service-based entrepreneurs" />
+      </div>
+      <div style="margin-bottom:1.5rem;">
+        <label for="formCustomer">Who is your ideal customer?</label>
+        <input type="text" id="formCustomer" placeholder="e.g. Solo consultants doing $5k–$15k/month" />
+      </div>
+
+      <button class="btn-primary" id="formSubmitBtn" disabled>SUBMIT PROFILE →</button>
+    </div>
+
+    <!-- Stage: Result -->
+    <div class="stage" id="stage-result">
+      <div class="result-header">
+        <div class="result-icon">✓</div>
+        <div>
+          <div class="result-title">CONTEXT VERIFIED</div>
+          <div class="result-meta" id="resultMeta"></div>
+        </div>
+      </div>
+
+      <div class="snapshot-box">
+        <div class="snapshot-title">// BRAND SNAPSHOT</div>
+        <div class="row"><span class="row-label">Source</span><span class="row-value" id="rSource"></span></div>
+        <div class="row"><span class="row-label">Identifier</span><span class="row-value" id="rCompany"></span></div>
+        <div class="row"><span class="row-label">Core Offering</span><span class="row-value" id="rOffering"></span></div>
+        <div class="row" id="rCustomerRow" style="display:none;"><span class="row-label">Target Customer</span><span class="row-value" id="rCustomer"></span></div>
+        <div class="row"><span class="row-label">Status</span><span class="row-value highlight" id="rStatus"></span></div>
+      </div>
+
+      <div class="payload-header">
+        <span>// SEQUENCER PAYLOAD</span>
+        <span class="payload-ready">READY FOR BLOCK_02</span>
+      </div>
+      <textarea class="payload" id="payloadOutput" readonly rows="8"></textarea>
+      <div class="payload-hint">Click box to select · then Ctrl+C / Cmd+C</div>
+
+      <div class="result-actions">
+        <button class="btn-copy" id="copyBtn">COPY PAYLOAD</button>
+        <button class="btn-reset" id="resetBtn">START OVER</button>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+
+  <div class="footer">WELCOME GATE // BASE-8 ARCHITECTURE // STANDALONE MODULE</div>
+</div>
+
+<script>
+(function () {
+  // State
+  let currentStage = 'url';
+  let resultData = null;
+  let copyTimer = null;
+
+  const VERIFY_STEPS = [
+    "Resolving domain...",
+    "Checking business signals...",
+    "Mapping brand footprint...",
+    "Context ready.",
+  ];
+
+  // Elements
+  const mainCard     = document.getElementById('mainCard');
+  const stepNav      = document.getElementById('stepNav');
+  const verifyCard   = document.getElementById('verifyCard');
+  const verifySpinner= document.getElementById('verifySpinner');
+  const verifyStatus = document.getElementById('verifyStatus');
+  const verifyStepTx = document.getElementById('verifyStepText');
+  const verifyBar    = document.getElementById('verifyBar');
+  const verifyUrlLbl = document.getElementById('verifyUrlLabel');
+
+  const urlInput     = document.getElementById('urlInput');
+  const followUpInput= document.getElementById('followUpInput');
+  const urlError     = document.getElementById('urlError');
+  const urlSubmitBtn = document.getElementById('urlSubmitBtn');
+  const skipToBrand  = document.getElementById('skipToBrand');
+
+  const brandText    = document.getElementById('brandText');
+  const brandSubmitBtn = document.getElementById('brandSubmitBtn');
+  const skipToForm   = document.getElementById('skipToForm');
+
+  const formOffer    = document.getElementById('formOffer');
+  const formCustomer = document.getElementById('formCustomer');
+  const formSubmitBtn= document.getElementById('formSubmitBtn');
+
+  const payloadOutput= document.getElementById('payloadOutput');
+  const copyBtn      = document.getElementById('copyBtn');
+  const resetBtn     = document.getElementById('resetBtn');
+
+  // Helpers
+  function isValidURL(val) {
+    const v = val.trim().toLowerCase();
+    if (v.includes('@')) return false;
+    if (v.startsWith('http://') || v.startsWith('https://')) return true;
+    if (/^[a-z0-9-]+\.[a-z]{2,}/.test(v)) return true;
+    return false;
+  }
+
+  function extractDomain(u) {
+    try {
+      return new URL(u.startsWith('http') ? u : 'https://' + u).hostname.replace('www.', '');
+    } catch (e) { return u; }
+  }
+
+  function transition(nextStage) {
+    mainCard.classList.add('animating');
+    setTimeout(function () {
+      showStage(nextStage);
+      mainCard.classList.remove('animating');
+    }, 300);
+  }
+
+  function showStage(stage) {
+    currentStage = stage;
+
+    // Hide/show nav
+    var showNav = stage !== 'result';
+    stepNav.style.display = showNav ? 'flex' : 'none';
+
+    // Update pips
+    var pips = { url: 'pip-url', brand: 'pip-brand', form: 'pip-form' };
+    Object.keys(pips).forEach(function (s) {
+      var el = document.getElementById(pips[s]);
+      if (el) el.classList.toggle('active', s === stage);
+    });
+
+    // Show correct stage panel
+    ['url','brand','form','result'].forEach(function (s) {
+      var el = document.getElementById('stage-' + s);
+      if (el) el.classList.toggle('active', s === stage);
+    });
+  }
+
+  function buildResult(method, data) {
+    resultData = Object.assign({ method: method, timestamp: new Date().toLocaleString() }, data);
+    populateResult(resultData);
+    transition('result');
+  }
+
+  function populateResult(r) {
+    document.getElementById('resultMeta').textContent = 'Method: ' + r.method + ' · ' + r.timestamp;
+    document.getElementById('rSource').textContent = r.source || '';
+    document.getElementById('rCompany').textContent = r.company_name || '';
+    document.getElementById('rOffering').textContent = (r.core_offering || '').slice(0, 100);
+    document.getElementById('rStatus').textContent = r.context_note || '';
+
+    var custRow = document.getElementById('rCustomerRow');
+    if (r.target_customer) {
+      custRow.style.display = 'flex';
+      document.getElementById('rCustomer').textContent = r.target_customer;
+    } else {
+      custRow.style.display = 'none';
+    }
+
+    var payload = {
+      context_status: 'VERIFIED',
+      extraction_method: r.method,
+      company_name: r.company_name,
+      core_offering: r.core_offering,
+      target_customer: r.target_customer || null,
+      context_note: r.context_note,
+    };
+    payloadOutput.value = JSON.stringify(payload, null, 2);
+  }
+
+  function reset() {
+    urlInput.value = '';
+    followUpInput.value = '';
+    showURLError('');
+    brandText.value = '';
+    formOffer.value = '';
+    formCustomer.value = '';
+    resultData = null;
+    urlSubmitBtn.disabled = true;
+    brandSubmitBtn.disabled = true;
+    formSubmitBtn.disabled = true;
+    copyBtn.textContent = 'COPY PAYLOAD';
+    copyBtn.classList.remove('copied');
+    mainCard.style.display = '';
+    verifyCard.style.display = 'none';
+    transition('url');
+  }
+
+  function showURLError(msg) {
+    if (msg) {
+      urlError.textContent = '⚠ ' + msg;
+      urlError.style.display = 'block';
+      urlInput.classList.add('error');
+    } else {
+      urlError.style.display = 'none';
+      urlInput.classList.remove('error');
+    }
+  }
+
+  // URL stage logic
+  function checkURLBtn() {
+    urlSubmitBtn.disabled = !(urlInput.value.trim() && followUpInput.value.trim());
+  }
+
+  urlInput.addEventListener('input', function () {
+    showURLError('');
+    checkURLBtn();
+  });
+
+  followUpInput.addEventListener('input', checkURLBtn);
+
+  urlInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') followUpInput.focus();
+  });
+
+  followUpInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !urlSubmitBtn.disabled) handleURLSubmit();
+  });
+
+  urlSubmitBtn.addEventListener('click', handleURLSubmit);
+
+  function handleURLSubmit() {
+    var rawUrl = urlInput.value.trim();
+    if (!rawUrl) return;
+    if (!isValidURL(rawUrl)) {
+      showURLError('Please enter a website URL, not an email address.');
+      return;
+    }
+    showURLError('');
+    runVerify(rawUrl, followUpInput.value.trim());
+  }
+
+  function runVerify(rawUrl, followUp) {
+    var prebuilt = {
+      method: 'URL',
+      source: rawUrl,
+      company_name: extractDomain(rawUrl),
+      core_offering: followUp || 'Extracted from: ' + rawUrl,
+      context_note: 'URL captured — ready to process',
+    };
+
+    // Show verify card, hide main card
+    mainCard.style.display = 'none';
+    stepNav.style.display = 'none';
+    verifyCard.style.display = 'block';
+    verifyUrlLbl.textContent = rawUrl;
+    verifyBar.style.width = '25%';
+    verifyBar.style.background = '#38bdf8';
+    verifySpinner.className = 'verify-spinner';
+    verifySpinner.textContent = '';
+    verifyStatus.textContent = 'VERIFYING DOMAIN';
+    verifyStatus.className = 'verify-status';
+    verifyStepTx.textContent = VERIFY_STEPS[0];
+
+    var step = 0;
+    var interval = setInterval(function () {
+      step++;
+      verifyStepTx.textContent = VERIFY_STEPS[Math.min(step, VERIFY_STEPS.length - 1)];
+      verifyBar.style.width = (((step + 1) / VERIFY_STEPS.length) * 100) + '%';
+
+      if (step >= VERIFY_STEPS.length - 1) {
+        clearInterval(interval);
+        setTimeout(function () {
+          // Done state
+          verifySpinner.classList.add('done');
+          verifySpinner.textContent = '✓';
+          verifyStatus.textContent = 'CONTEXT LOCKED';
+          verifyStatus.classList.add('done');
+          verifyBar.style.background = '#10b981';
+
+          setTimeout(function () {
+            verifyCard.style.display = 'none';
+            mainCard.style.display = '';
+            resultData = Object.assign({ timestamp: new Date().toLocaleString() }, prebuilt);
+            populateResult(resultData);
+            showStage('result');
+          }, 600);
+        }, 400);
+      }
+    }, 600);
+  }
+
+  skipToBrand.addEventListener('click', function () { transition('brand'); });
+
+  // Brand stage
+  brandText.addEventListener('input', function () {
+    brandSubmitBtn.disabled = !brandText.value.trim();
+  });
+
+  brandSubmitBtn.addEventListener('click', function () {
+    if (!brandText.value.trim()) return;
+    buildResult('BRAND_TEXT', {
+      source: 'Brand description',
+      company_name: 'From brand info',
+      core_offering: brandText.value.slice(0, 120),
+      context_note: 'Brand info captured',
+    });
+  });
+
+  skipToForm.addEventListener('click', function () { transition('form'); });
+
+  // Form stage
+  function checkFormBtn() {
+    formSubmitBtn.disabled = !(formOffer.value.trim() && formCustomer.value.trim());
+  }
+
+  formOffer.addEventListener('input', checkFormBtn);
+  formCustomer.addEventListener('input', checkFormBtn);
+
+  formSubmitBtn.addEventListener('click', function () {
+    if (!formOffer.value.trim() || !formCustomer.value.trim()) return;
+    buildResult('FORM', {
+      source: 'Intake form',
+      company_name: 'Form submission',
+      core_offering: formOffer.value.trim(),
+      target_customer: formCustomer.value.trim(),
+      context_note: 'Form data captured',
+    });
+  });
+
+  // Result actions
+  payloadOutput.addEventListener('click', function () { payloadOutput.select(); });
+
+  copyBtn.addEventListener('click', function () {
+    payloadOutput.select();
+    try {
+      document.execCommand('copy');
+    } catch (e) {
+      if (navigator.clipboard) navigator.clipboard.writeText(payloadOutput.value);
+    }
+    copyBtn.textContent = '✓ COPIED';
+    copyBtn.classList.add('copied');
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(function () {
+      copyBtn.textContent = 'COPY PAYLOAD';
+      copyBtn.classList.remove('copied');
+    }, 2000);
+  });
+
+  resetBtn.addEventListener('click', reset);
+
+})();
+</script>
+</body>
+</html>
