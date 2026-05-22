@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Auto Structural Sequencer // Bottleneck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#080e1c;
+  --navy:#0a1628;
+  --surface:rgba(10,22,40,0.9);
+  --surface2:rgba(6,12,24,0.95);
+  --blue:#1A6EF5;
+  --cyan:#00CFFF;
+  --teal:#00C9C8;
+  --grad:linear-gradient(135deg,#1A6EF5,#00CFFF);
+  --glow:rgba(0,207,255,0.12);
+  --glow-blue:rgba(26,110,245,0.15);
+  --border:rgba(0,207,255,0.15);
+  --border-dim:rgba(255,255,255,0.06);
+  --text:#eef2f7;
+  --text-muted:#7a9bb5;
+  --text-dim:#3a5068;
+  --mono:'DM Mono','Courier New',monospace;
+  --display:'Syne',sans-serif;
+  --green:#10b981;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --radius:4px;
+}
+
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow-x:hidden}
+
+/* BG */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,207,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,207,255,0.03) 1px,transparent 1px);
+  background-size:52px 52px;
+}
+.orb{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(90px)}
+.orb-1{width:800px;height:400px;top:-80px;left:50%;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(26,110,245,0.1) 0%,transparent 70%)}
+.orb-2{width:500px;height:500px;bottom:5%;right:-15%;background:radial-gradient(ellipse,rgba(0,207,255,0.07) 0%,transparent 70%)}
+
+.page{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:0 1.25rem 6rem}
+
+/* NAV */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.25rem 0;border-bottom:1px solid var(--border-dim);
+  margin-bottom:3rem;position:sticky;top:0;z-index:100;
+  background:rgba(8,14,28,0.92);backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-family:var(--display);font-weight:800;font-size:1rem;letter-spacing:-0.02em}
+.nav-logo svg{width:32px;height:32px}
+.nav-badge{font-size:9px;letter-spacing:0.18em;color:var(--cyan);background:var(--glow);border:1px solid var(--border);padding:3px 10px;border-radius:2px}
+
+/* HEADER */
+.header{text-align:center;padding:2rem 0 3rem;animation:fadeUp 0.5s ease both}
+.header-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:0.2em;color:var(--cyan);background:var(--glow);border:1px solid var(--border);padding:4px 14px;border-radius:2px;margin-bottom:1.5rem}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite}
+.header h1{font-family:var(--display);font-size:clamp(1.8rem,5vw,2.8rem);font-weight:800;letter-spacing:-0.03em;line-height:1.1;color:#fff;margin-bottom:0.75rem}
+.header h1 span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-sub{font-size:11px;color:var(--text-muted);letter-spacing:0.05em;line-height:1.7;max-width:500px;margin:0 auto}
+
+/* INTAKE TOGGLE */
+.intake-toggle{display:flex;gap:8px;margin-bottom:2rem;background:rgba(255,255,255,0.03);border:1px solid var(--border-dim);border-radius:var(--radius);padding:4px;animation:fadeUp 0.5s 0.1s ease both}
+.toggle-btn{flex:1;padding:10px;font-size:10px;letter-spacing:0.12em;font-family:var(--mono);border:none;border-radius:2px;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text-dim)}
+.toggle-btn.active{background:var(--glow-blue);border:1px solid rgba(26,110,245,0.4);color:var(--cyan)}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border-dim);border-radius:var(--radius);padding:1.75rem;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:fadeUp 0.5s 0.15s ease both;transition:opacity 0.25s,transform 0.25s}
+.card.animating{opacity:0;transform:translateY(8px)}
+
+.section-label{font-size:9px;letter-spacing:0.2em;color:var(--cyan);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+
+/* INPUTS */
+label{display:block;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;margin-bottom:6px}
+input[type=text],input[type=email],textarea{
+  width:100%;padding:10px 14px;
+  background:rgba(2,6,18,0.9);border:1px solid rgba(255,255,255,0.07);
+  border-radius:2px;color:var(--text);font-size:12px;font-family:var(--mono);
+  margin-bottom:1rem;transition:border-color 0.2s;display:block;
+}
+input:focus,textarea:focus{outline:none;border-color:rgba(0,207,255,0.4)}
+input::placeholder,textarea::placeholder{color:var(--text-dim)}
+textarea{resize:none;line-height:1.6}
+
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.field-row{grid-template-columns:1fr}}
+
+/* GUILTY FOOTPRINT */
+.gf-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:9px;letter-spacing:0.15em;color:var(--amber);
+  background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);
+  padding:3px 10px;border-radius:2px;margin-bottom:1rem;
+}
+
+/* BTN */
+.btn-primary{
+  width:100%;padding:13px;
+  background:linear-gradient(135deg,rgba(26,110,245,0.2),rgba(0,207,255,0.15));
+  border:1px solid rgba(0,207,255,0.35);border-radius:2px;
+  color:var(--cyan);font-size:11px;font-family:var(--mono);
+  font-weight:700;letter-spacing:0.14em;cursor:pointer;
+  transition:all 0.2s;margin-top:0.5rem;
+}
+.btn-primary:hover:not(:disabled){background:linear-gradient(135deg,rgba(26,110,245,0.35),rgba(0,207,255,0.25));border-color:rgba(0,207,255,0.6)}
+.btn-primary:disabled{opacity:0.3;cursor:not-allowed}
+
+/* PROCESSING PANEL */
+.processing{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:2.5rem 2rem;
+  text-align:center;display:none;
+  animation:fadeUp 0.3s ease both;
+}
+.proc-spinner{
+  width:52px;height:52px;border-radius:50%;margin:0 auto 1.5rem;
+  border:2px solid rgba(0,207,255,0.15);border-top-color:var(--cyan);
+  animation:spin 0.8s linear infinite;
+}
+.proc-spinner.done{animation:none;border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--green)}
+.proc-stage{font-size:10px;letter-spacing:0.18em;color:var(--cyan);margin-bottom:0.5rem;min-height:16px}
+.proc-stage.done{color:var(--green)}
+.proc-detail{font-size:12px;color:var(--text-muted);min-height:20px;transition:all 0.3s}
+.proc-bar-track{background:rgba(255,255,255,0.04);border-radius:2px;height:2px;overflow:hidden;margin-top:2rem}
+.proc-bar-fill{height:100%;background:var(--grad);transition:width 0.6s ease,background 0.4s;width:0%}
+
+/* DECISION TREE VISUAL */
+.tree-panel{
+  background:rgba(2,6,18,0.8);border:1px solid var(--border-dim);
+  border-radius:var(--radius);padding:1.25rem;margin:1.5rem 0;
+  font-size:10px;line-height:2;letter-spacing:0.05em;
+  display:none;
+}
+.tree-node{display:flex;align-items:flex-start;gap:8px;padding:3px 0;transition:all 0.3s}
+.tree-node.active .node-dot{background:var(--cyan);box-shadow:0 0 8px rgba(0,207,255,0.6)}
+.tree-node.passed .node-dot{background:var(--green)}
+.tree-node.failed .node-dot{background:var(--red)}
+.tree-node.waiting .node-dot{background:var(--text-dim)}
+.node-dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);flex-shrink:0;margin-top:5px;transition:all 0.3s}
+.node-text{color:var(--text-dim);transition:color 0.3s}
+.tree-node.active .node-text{color:var(--cyan)}
+.tree-node.passed .node-text{color:var(--green)}
+.tree-node.failed .node-text{color:#f87171}
+.node-indent{padding-left:20px}
+
+/* OUTPUT PANEL */
+.output-panel{display:none;animation:fadeUp 0.4s ease both}
+
+.output-header{
+  display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;
+  padding:1.25rem 1.5rem;
+  background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);
+  border-radius:var(--radius);
+}
+.output-icon{width:36px;height:36px;border-radius:2px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.output-title{font-family:var(--display);font-size:1rem;font-weight:700;color:var(--green)}
+.output-meta{font-size:10px;color:var(--text-dim);letter-spacing:0.05em;margin-top:2px}
+
+/* Route badge */
+.route-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:9px;letter-spacing:0.15em;font-weight:700;
+  padding:4px 12px;border-radius:2px;margin-bottom:1.5rem;
+}
+.route-a{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--green)}
+.route-b{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:var(--amber)}
+
+/* Summary box */
+.summary-box{
+  background:var(--surface);border:1px solid var(--border-dim);
+  border-radius:var(--radius);padding:1.25rem 1.5rem;
+  margin-bottom:1.5rem;font-size:12px;color:var(--text-muted);
+  line-height:1.8;
+}
+
+/* ILO cards */
+.ilo-list{display:flex;flex-direction:column;gap:12px;margin-bottom:1.5rem}
+.ilo-card{
+  background:var(--surface2);border:1px solid var(--border-dim);
+  border-left:2px solid var(--cyan);
+  border-radius:var(--radius);padding:1.25rem;
+  transition:border-color 0.2s;
+}
+.ilo-card:hover{border-color:var(--border)}
+.ilo-num{font-size:9px;letter-spacing:0.18em;color:var(--cyan);margin-bottom:0.4rem}
+.ilo-title{font-family:var(--display);font-size:0.95rem;font-weight:700;color:#fff;margin-bottom:0.75rem}
+.ilo-row{display:flex;gap:10px;font-size:11px;margin-bottom:0.4rem}
+.ilo-label{color:var(--text-dim);min-width:70px;flex-shrink:0;letter-spacing:0.08em}
+.ilo-value{color:var(--text-muted);line-height:1.5}
+
+/* Routing section */
+.routing-box{
+  background:rgba(26,110,245,0.06);border:1px solid rgba(26,110,245,0.2);
+  border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.5rem;
+}
+.routing-title{font-size:10px;letter-spacing:0.15em;color:var(--blue);margin-bottom:1rem}
+.routing-dest{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:11px;
+}
+.routing-dest:last-child{border-bottom:none}
+.dest-icon{font-size:16px;flex-shrink:0}
+.dest-name{color:var(--text-muted);flex:1}
+.dest-url{font-size:10px;color:var(--cyan);letter-spacing:0.05em;text-decoration:none}
+.dest-url:hover{text-decoration:underline}
+
+/* JSON payload */
+.payload-section{margin-bottom:1.5rem}
+.payload-header{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:10px;color:var(--text-dim);letter-spacing:0.12em;margin-bottom:8px;
+}
+.payload-ready{color:var(--cyan)}
+textarea.payload-out{
+  width:100%;background:#020408;
+  border:1px solid rgba(255,255,255,0.05);border-radius:2px;
+  padding:1rem;font-size:10px;color:var(--cyan);
+  line-height:1.7;font-family:var(--mono);resize:none;
+  cursor:text;margin-bottom:4px;
+}
+textarea.payload-out:focus{outline:none;border-color:var(--border)}
+.payload-hint{font-size:10px;color:var(--text-dim)}
+
+/* Action buttons */
+.action-row{display:flex;gap:10px;flex-wrap:wrap}
+.btn-copy{
+  flex:1;padding:10px;
+  background:rgba(0,207,255,0.1);border:1px solid var(--border);
+  border-radius:2px;color:var(--cyan);
+  font-size:10px;font-family:var(--mono);letter-spacing:0.1em;
+  cursor:pointer;transition:all 0.2s;min-width:120px;
+}
+.btn-copy.copied{background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.3);color:var(--green)}
+.btn-reset{
+  flex:1;padding:10px;background:transparent;
+  border:1px solid var(--border-dim);border-radius:2px;
+  color:var(--text-dim);font-size:10px;font-family:var(--mono);
+  letter-spacing:0.1em;cursor:pointer;transition:all 0.2s;min-width:120px;
+}
+.btn-reset:hover{border-color:rgba(255,255,255,0.15);color:var(--text-muted)}
+
+.footer-tag{text-align:center;margin-top:3rem;font-size:10px;color:var(--text-dim);letter-spacing:0.1em}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+@media(max-width:520px){.card{padding:1.25rem}.action-row{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="page">
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="7" fill="rgba(10,22,40,0.9)"/>
+      <path d="M7 10 L13 16 L7 22" stroke="url(#nb)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M25 10 L19 16 L25 22" stroke="url(#nc)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="14.5" cy="16" r="1.5" fill="#00CFFF" opacity="0.8"/>
+      <circle cx="17.5" cy="16" r="1.5" fill="#1A6EF5" opacity="0.8"/>
+      <defs>
+        <linearGradient id="nb" x1="7" y1="10" x2="13" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#1A6EF5"/>
+          <stop offset="100%" stop-color="#00CFFF"/>
+        </linearGradient>
+        <linearGradient id="nc" x1="25" y1="10" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#00CFFF"/>
+          <stop offset="100%" stop-color="#1A6EF5"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    bottleneck
+  </a>
+  <div class="nav-badge">BLOCK 02 // SEQUENCER</div>
+</nav>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-eyebrow"><div class="pulse"></div>AUTO STRUCTURAL SEQUENCER // v1.0</div>
+  <h1>Input = Output.<br/><span>Find the cleanest path.</span></h1>
+  <p class="header-sub">Drop your idea in. The engine exhausts every route to a Single ILO before it accepts a chain. What comes out is deployment-ready.</p>
+</div>
+
+<!-- INTAKE TOGGLE -->
+<div class="intake-toggle">
+  <button class="toggle-btn active" id="tabGate" onclick="switchTab('gate')">⚡ FROM WELCOME GATE</button>
+  <button class="toggle-btn" id="tabManual" onclick="switchTab('manual')">✏ MANUAL INPUT</button>
+  <button class="toggle-btn" id="tabGF" onclick="switchTab('gf')">👤 GUILTY FOOTPRINT</button>
+</div>
+
+<!-- MAIN CARD -->
+<div class="card" id="mainCard">
+
+  <!-- TAB: GATE -->
+  <div id="paneGate">
+    <div class="section-label">// PASTE WELCOME GATE PAYLOAD</div>
+    <label for="gatePayload">Context JSON from Block 01</label>
+    <textarea id="gatePayload" rows="6" placeholder='{"context_status":"VERIFIED","extraction_method":"URL","company_name":"...","core_offering":"..."}'></textarea>
+    <label for="gateDesired">Desired Final Output</label>
+    <textarea id="gateDesired" rows="3" placeholder="e.g. A tool that takes a company name and outputs 3 prime sales targets with contact info"></textarea>
+    <button class="btn-primary" id="gateBtnRun" onclick="runSequencer('gate')" disabled>RUN SEQUENCER →</button>
+  </div>
+
+  <!-- TAB: MANUAL -->
+  <div id="paneManual" style="display:none">
+    <div class="section-label">// MANUAL CONTEXT INPUT</div>
+    <div class="field-row">
+      <div>
+        <label for="manualCompany">Company / Project Name</label>
+        <input type="text" id="manualCompany" placeholder="e.g. Bottleneck Solutions"/>
+      </div>
+      <div>
+        <label for="manualCategory">Category</label>
+        <input type="text" id="manualCategory" placeholder="e.g. SaaS / Automation"/>
+      </div>
+    </div>
+    <label for="manualOffering">What do you sell or offer?</label>
+    <textarea id="manualOffering" rows="3" placeholder="Describe your product, service, or tool and who it's for..."></textarea>
+    <label for="manualDesired">Desired Final Output</label>
+    <textarea id="manualDesired" rows="3" placeholder="e.g. An automated invoice generator that takes time-tracking CSV data and outputs a formatted PDF"></textarea>
+    <button class="btn-primary" id="manualBtnRun" onclick="runSequencer('manual')" disabled>RUN SEQUENCER →</button>
+  </div>
+
+  <!-- TAB: GUILTY FOOTPRINT -->
+  <div id="paneGF" style="display:none">
+    <div class="gf-badge">⚠ GUILTY FOOTPRINT MODE — NO REAL CUSTOMERS REQUIRED</div>
+    <div class="section-label">// SYNTHESIZE YOUR IDEAL CUSTOMER TWIN</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.7">No customer data yet? Describe what you're building and the engine will synthesize an identical twin of your ideal customer — then use that as the ICP context to sequence your tool.</p>
+    <label for="gfProduct">What are you building?</label>
+    <textarea id="gfProduct" rows="3" placeholder="e.g. An AI-powered workflow audit tool for small agencies. No customers yet — it's pre-launch."></textarea>
+    <label for="gfProblem">What problem does it solve?</label>
+    <textarea id="gfProblem" rows="3" placeholder="e.g. Agencies waste hours manually reviewing client workflows before they can automate anything..."></textarea>
+    <label for="gfDesired">Desired Final Output of the tool</label>
+    <textarea id="gfDesired" rows="3" placeholder="e.g. A report card showing where the agency's biggest time bottlenecks are"></textarea>
+    <button class="btn-primary" id="gfBtnRun" onclick="runSequencer('gf')" disabled>SYNTHESIZE &amp; SEQUENCE →</button>
+  </div>
+
+</div>
+
+<!-- PROCESSING PANEL -->
+<div class="processing" id="processingPanel">
+  <div class="proc-spinner" id="procSpinner"></div>
+  <div class="proc-stage" id="procStage">INITIALIZING ENGINE</div>
+  <div class="proc-detail" id="procDetail">Parsing input schema...</div>
+
+  <!-- Decision tree live view -->
+  <div class="tree-panel" id="treePanel">
+    <div class="tree-node waiting" id="tn1"><div class="node-dot"></div><div class="node-text">Can this be a Single ILO process?</div></div>
+    <div class="node-indent">
+      <div class="tree-node waiting" id="tn1y"><div class="node-dot"></div><div class="node-text">YES → Route A: One-Shot Engine → Production</div></div>
+      <div class="tree-node waiting" id="tn2"><div class="node-dot"></div><div class="node-text">NO → What additional info would collapse it to Single ILO?</div></div>
+      <div class="node-indent">
+        <div class="tree-node waiting" id="tn2y"><div class="node-dot"></div><div class="node-text">With added context → Single ILO achieved → Production</div></div>
+        <div class="tree-node waiting" id="tn3"><div class="node-dot"></div><div class="node-text">Still no → Try sequential loop variant</div></div>
+        <div class="node-indent">
+          <div class="tree-node waiting" id="tn3y"><div class="node-dot"></div><div class="node-text">Loop works → Single Process ILO → Production</div></div>
+          <div class="tree-node waiting" id="tn4"><div class="node-dot"></div><div class="node-text">Loop fails → Adjust loop to achieve Single ILO?</div></div>
+          <div class="node-indent">
+            <div class="tree-node waiting" id="tn4y"><div class="node-dot"></div><div class="node-text">Adjusted loop succeeds → Production</div></div>
+            <div class="tree-node waiting" id="tn5"><div class="node-dot"></div><div class="node-text">Fails again → Base-8 Chained ILO sequence</div></div>
+            <div class="node-indent">
+              <div class="tree-node waiting" id="tn5y"><div class="node-dot"></div><div class="node-text">Identify all Single ILOs → Chain → Run in order</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="proc-bar-track"><div class="proc-bar-fill" id="procBar"></div></div>
+</div>
+
+<!-- OUTPUT PANEL -->
+<div class="output-panel" id="outputPanel">
+
+  <div class="output-header">
+    <div class="output-icon">✓</div>
+    <div>
+      <div class="output-title">BLUEPRINT COMPILED</div>
+      <div class="output-meta" id="outputMeta"></div>
+    </div>
+  </div>
+
+  <div id="routeBadge"></div>
+  <div class="summary-box" id="summaryBox"></div>
+
+  <div class="section-label">// ILO BLUEPRINT(S)</div>
+  <div class="ilo-list" id="iloList"></div>
+
+  <div class="section-label">// DEPLOYMENT ROUTING</div>
+  <div class="routing-box" id="routingBox"></div>
+
+  <div class="payload-section">
+    <div class="payload-header">
+      <span>// PROGRESSIVE BUILD — PART 1 JSON</span>
+      <span class="payload-ready">READY FOR DEPLOYMENT</span>
+    </div>
+    <textarea class="payload-out" id="jsonPayload" readonly rows="16" onclick="this.select()"></textarea>
+    <div class="payload-hint">Click to select · Ctrl+C / Cmd+C to copy · Drop into AI Studios or PowerShell/React scaffold</div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn-copy" id="copyJsonBtn" onclick="copyJson()">COPY JSON</button>
+    <button class="btn-copy" id="copyAllBtn" onclick="copyAll()" style="background:rgba(26,110,245,0.1);border-color:rgba(26,110,245,0.3);color:#60a5fa">COPY FULL PAYLOAD</button>
+    <button class="btn-reset" onclick="resetAll()">START OVER</button>
+  </div>
+
+</div>
+
+<div class="footer-tag">AUTO STRUCTURAL SEQUENCER // BLOCK 02 // BASE-8 ARCHITECTURE // BOTTLENECK</div>
+
+</div><!-- /page -->
+
+<script>
+(function(){
+
+var currentTab = 'gate';
+var lastResult = null;
+var copyTimers = {};
+
+// ── TAB SWITCHING ──
+window.switchTab = function(tab){
+  currentTab = tab;
+  ['gate','manual','gf'].forEach(function(t){
+    document.getElementById('pane'+cap(t)).style.display = t===tab?'block':'none';
+    document.getElementById('tab'+cap(t)).classList.toggle('active', t===tab);
+  });
+};
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+// ── BUTTON ENABLE LOGIC ──
+function watchInputs(ids, btnId){
+  ids.forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', function(){
+      var allFilled = ids.every(function(i){ return document.getElementById(i).value.trim().length > 0; });
+      document.getElementById(btnId).disabled = !allFilled;
+    });
+  });
+}
+
+watchInputs(['gatePayload','gateDesired'], 'gateBtnRun');
+watchInputs(['manualOffering','manualDesired'], 'manualBtnRun');
+watchInputs(['gfProduct','gfProblem','gfDesired'], 'gfBtnRun');
+
+// ── BUILD CONTEXT FROM TAB ──
+function buildContext(tab){
+  if(tab === 'gate'){
+    var raw = document.getElementById('gatePayload').value.trim();
+    var parsed = {};
+    try{ parsed = JSON.parse(raw); }catch(e){ parsed = { raw_input: raw }; }
+    return {
+      company_name: parsed.company_name || 'Unknown',
+      core_offering: parsed.core_offering || raw,
+      extraction_method: parsed.extraction_method || 'GATE_PAYLOAD',
+      desired_output: document.getElementById('gateDesired').value.trim(),
+      intake_mode: 'WELCOME_GATE'
+    };
+  }
+  if(tab === 'manual'){
+    return {
+      company_name: document.getElementById('manualCompany').value.trim() || 'Not specified',
+      category: document.getElementById('manualCategory').value.trim(),
+      core_offering: document.getElementById('manualOffering').value.trim(),
+      desired_output: document.getElementById('manualDesired').value.trim(),
+      intake_mode: 'MANUAL'
+    };
+  }
+  if(tab === 'gf'){
+    return {
+      product_description: document.getElementById('gfProduct').value.trim(),
+      problem_solved: document.getElementById('gfProblem').value.trim(),
+      desired_output: document.getElementById('gfDesired').value.trim(),
+      intake_mode: 'GUILTY_FOOTPRINT'
+    };
+  }
+}
+
+// ── PROCESSING ANIMATION ──
+var procSteps = [
+  { stage: 'PARSING INPUT', detail: 'Extracting schema from context data...', pct: 10 },
+  { stage: 'ASSESSING COMPLEXITY', detail: 'Can this be a Single ILO process?', pct: 22 },
+  { stage: 'ROUTE ANALYSIS', detail: 'Testing One-Shot Engine viability...', pct: 35 },
+  { stage: 'LOOP VARIANT TEST', detail: 'Trying sequential loop variant...', pct: 50 },
+  { stage: 'PERSISTENCE CHECK', detail: 'Exhausting Single ILO options...', pct: 65 },
+  { stage: 'COMPILING BLUEPRINT', detail: 'Structuring I/L/O architecture...', pct: 78 },
+  { stage: 'GENERATING JSON', detail: 'Building progressive deploy package...', pct: 90 },
+  { stage: 'ROUTING', detail: 'Determining deployment destination...', pct: 96 },
+];
+
+function animateProcessing(onComplete){
+  var panel = document.getElementById('processingPanel');
+  var spinner = document.getElementById('procSpinner');
+  var stage = document.getElementById('procStage');
+  var detail = document.getElementById('procDetail');
+  var bar = document.getElementById('procBar');
+  var tree = document.getElementById('treePanel');
+
+  panel.style.display = 'block';
+  tree.style.display = 'block';
+  bar.style.width = '5%';
+
+  var i = 0;
+  function tick(){
+    if(i >= procSteps.length){ onComplete(); return; }
+    var s = procSteps[i];
+    stage.textContent = s.stage;
+    detail.textContent = s.detail;
+    bar.style.width = s.pct + '%';
+    updateTree(i);
+    i++;
+    setTimeout(tick, 480 + Math.random()*220);
+  }
+  setTimeout(tick, 300);
+}
+
+function updateTree(step){
+  var nodes = ['tn1','tn1y','tn2','tn2y','tn3','tn3y','tn4','tn4y','tn5','tn5y'];
+  nodes.forEach(function(id,idx){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.className = 'tree-node ' + (idx < step ? 'passed' : idx === step ? 'active' : 'waiting');
+  });
+}
+
+function finishProcessing(route){
+  var spinner = document.getElementById('procSpinner');
+  var stage = document.getElementById('procStage');
+  var bar = document.getElementById('procBar');
+  spinner.className = 'proc-spinner done';
+  spinner.textContent = '✓';
+  stage.textContent = 'BLUEPRINT READY';
+  stage.className = 'proc-stage done';
+  bar.style.width = '100%';
+  bar.style.background = 'var(--green)';
+
+  var finalNode = route === 'A' ? 'tn1y' : 'tn5y';
+  var nodes = ['tn1','tn1y','tn2','tn2y','tn3','tn3y','tn4','tn4y','tn5','tn5y'];
+  nodes.forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.className = 'tree-node ' + (id === finalNode ? 'passed' : 'passed');
+  });
+}
+
+// ── MAIN RUNNER ──
+window.runSequencer = function(tab){
+  var ctx = buildContext(tab);
+  document.getElementById('mainCard').style.display = 'none';
+  document.querySelector('.intake-toggle').style.display = 'none';
+
+  animateProcessing(function(){
+    callClaudeAPI(ctx, function(result){
+      lastResult = result;
+      finishProcessing(result.route);
+      setTimeout(function(){
+        document.getElementById('processingPanel').style.display = 'none';
+        renderOutput(result, ctx);
+      }, 700);
+    });
+  });
+};
+
+// ── CLAUDE API CALL ──
+function callClaudeAPI(ctx, callback){
+  var systemPrompt = `You are the Auto Structural Sequencer — a blueprint engine for Bottleneck, a SaaS automation company.
+
+Your job: take an initial input context and a desired final output, then determine the cleanest architectural path to build it.
+
+PERSISTENCE LOGIC — exhaust these steps in order before accepting a chain:
+1. Can this be a Single ILO (Input/Logic/Output) process? If YES → Route A.
+2. If NO → what additional context would collapse it to Single ILO? If that works → Route A.
+3. Still no → try a sequential loop variant of one-shot. If works → Route A.
+4. Loop fails → adjust loop to achieve Single ILO. If succeeds → Route A.
+5. Only if ALL above fail → Route B: Base-8 Chained ILO sequence.
+
+Route A = ONE_SHOT. Route B = CHAINED.
+
+For Route A output exactly 1 ILO blueprint.
+For Route B output 2-8 distinct Single ILO blueprints in sequence.
+
+Deployment routing rules:
+- Prompt-only, no UI needed → AI_STUDIOS
+- Needs a UI/frontend → REACT_POWERSHELL
+- Both apply → list both
+
+Respond ONLY with valid JSON, no markdown, no backticks, no preamble. Schema:
+{
+  "route": "A" or "B",
+  "route_label": "ONE-SHOT ENGINE" or "CHAINED ILO SEQUENCE",
+  "determination_path": "brief explanation of which persistence steps were tried and why this route was chosen",
+  "voice_summary": "2-3 sentences in Knox voice — direct, mischievous genius, anti-corporate. Tell the user what you found and why.",
+  "ilos": [
+    {
+      "number": 1,
+      "title": "Blueprint title",
+      "input_schema": "what goes in",
+      "logic_engine": "what the AI/logic does",
+      "self_correction": "how it audits/refines itself",
+      "output_schema": "what comes out"
+    }
+  ],
+  "deployment": {
+    "primary": "AI_STUDIOS or REACT_POWERSHELL",
+    "secondary": null or "the other option",
+    "reasoning": "why these destinations",
+    "ai_studios_url": "https://aistudio.google.com/prompts/new_chat",
+    "react_url": "https://react.dev/learn"
+  },
+  "metadata": {
+    "total_ilos": 1 or number,
+    "complexity": "LOW / MEDIUM / HIGH",
+    "persistence_steps_tried": number
+  }
+}`;
+
+  var userMsg = 'SEQUENCER INPUT:\n' + JSON.stringify(ctx, null, 2);
+
+  fetch('https://dual-engine-proxy.bmowrey597.workers.dev/anthropic', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMsg }]
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    var text = '';
+    if(data.content && data.content.length){
+      data.content.forEach(function(b){ if(b.type==='text') text += b.text; });
+    }
+    var clean = text.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+    callback(parsed);
+  })
+  .catch(function(err){
+    console.error('API error:', err);
+    callback(getFallback(ctx));
+  });
+}
+
+// ── FALLBACK ──
+function getFallback(ctx){
+  return {
+    route: 'A',
+    route_label: 'ONE-SHOT ENGINE',
+    determination_path: 'Context provided sufficient detail for single ILO resolution.',
+    voice_summary: "You overbuilt it in your head. This is a clean one-shot. Give it an input, it does the thing, done. There's no reason to chain this.",
+    ilos:[{
+      number:1,
+      title:'Direct Output Generator',
+      input_schema: ctx.core_offering || ctx.product_description || 'User-provided context',
+      logic_engine: 'Parse input context, execute transformation logic, apply self-correction rules',
+      self_correction: 'Validate output format, check completeness, re-run if schema mismatch',
+      output_schema: ctx.desired_output || 'Structured digital asset or data package'
+    }],
+    deployment:{
+      primary:'AI_STUDIOS',
+      secondary:'REACT_POWERSHELL',
+      reasoning:'Single prompt-based transformation — AI Studios first, React if UI needed',
+      ai_studios_url:'https://aistudio.google.com/prompts/new_chat',
+      react_url:'https://react.dev/learn'
+    },
+    metadata:{ total_ilos:1, complexity:'LOW', persistence_steps_tried:1 }
+  };
+}
+
+// ── RENDER OUTPUT ──
+function renderOutput(r, ctx){
+  var panel = document.getElementById('outputPanel');
+  panel.style.display = 'block';
+
+  document.getElementById('outputMeta').textContent =
+    'Route ' + r.route + ' · ' + (r.metadata?.total_ilos||1) + ' ILO(s) · Complexity: ' + (r.metadata?.complexity||'—') + ' · ' + new Date().toLocaleString();
+
+  var rb = document.getElementById('routeBadge');
+  rb.innerHTML = '<div class="route-badge '+(r.route==='A'?'route-a':'route-b')+'">'+
+    (r.route==='A'?'✓':'⚙')+' ROUTE '+r.route+': '+r.route_label+'</div>';
+
+  document.getElementById('summaryBox').textContent = r.voice_summary || '';
+
+  // ILOs
+  var list = document.getElementById('iloList');
+  list.innerHTML = '';
+  (r.ilos||[]).forEach(function(ilo){
+    var card = document.createElement('div');
+    card.className = 'ilo-card';
+    card.innerHTML =
+      '<div class="ilo-num">ILO '+(ilo.number||1)+(r.ilos.length>1?' of '+r.ilos.length:'')+'</div>'+
+      '<div class="ilo-title">'+esc(ilo.title)+'</div>'+
+      '<div class="ilo-row"><span class="ilo-label">INPUT</span><span class="ilo-value">'+esc(ilo.input_schema)+'</span></div>'+
+      '<div class="ilo-row"><span class="ilo-label">LOGIC</span><span class="ilo-value">'+esc(ilo.logic_engine)+'</span></div>'+
+      '<div class="ilo-row"><span class="ilo-label">CORRECTION</span><span class="ilo-value">'+esc(ilo.self_correction)+'</span></div>'+
+      '<div class="ilo-row"><span class="ilo-label">OUTPUT</span><span class="ilo-value">'+esc(ilo.output_schema)+'</span></div>';
+    list.appendChild(card);
+  });
+
+  // Routing
+  var dep = r.deployment || {};
+  var rb2 = document.getElementById('routingBox');
+  rb2.innerHTML = '<div class="routing-title">// WHERE TO SEND THIS</div>';
+  if(dep.primary){
+    rb2.innerHTML += routingRow(dep.primary, dep.ai_studios_url, dep.react_url, true);
+  }
+  if(dep.secondary){
+    rb2.innerHTML += routingRow(dep.secondary, dep.ai_studios_url, dep.react_url, false);
+  }
+  if(dep.reasoning){
+    rb2.innerHTML += '<div style="font-size:10px;color:var(--text-dim);margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.04)">'+esc(dep.reasoning)+'</div>';
+  }
+
+  // JSON payload
+  var fullPayload = buildFullPayload(r, ctx);
+  document.getElementById('jsonPayload').value = JSON.stringify(fullPayload, null, 2);
+
+  // Scroll
+  setTimeout(function(){ panel.scrollIntoView({ behavior:'smooth', block:'start' }); }, 100);
+}
+
+function routingRow(dest, aiUrl, reactUrl, isPrimary){
+  var isAI = dest.indexOf('AI_STUDIOS') > -1 || dest.indexOf('STUDIO') > -1;
+  var icon = isAI ? '🤖' : '⚛';
+  var label = isAI ? 'Google AI Studios' : 'React / PowerShell Scaffold';
+  var url = isAI ? (aiUrl||'https://aistudio.google.com/prompts/new_chat') : (reactUrl||'https://react.dev/learn');
+  return '<div class="routing-dest">'+
+    '<div class="dest-icon">'+icon+'</div>'+
+    '<div class="dest-name">'+label+(isPrimary?' <span style="font-size:9px;color:var(--cyan);letter-spacing:0.1em">PRIMARY</span>':'')+'</div>'+
+    '<a class="dest-url" href="'+url+'" target="_blank" rel="noopener">OPEN →</a>'+
+    '</div>';
+}
+
+function buildFullPayload(r, ctx){
+  return {
+    payload_version: '1.0',
+    generated_by: 'Bottleneck Auto Structural Sequencer // Block 02',
+    timestamp: new Date().toISOString(),
+    intake_context: ctx,
+    sequencer_result: {
+      route: r.route,
+      route_label: r.route_label,
+      determination_path: r.determination_path,
+      persistence_steps_tried: r.metadata?.persistence_steps_tried || 1,
+      complexity: r.metadata?.complexity || 'MEDIUM'
+    },
+    ilos: r.ilos,
+    deployment: r.deployment,
+    progressive_build: {
+      build_number: 1,
+      build_type: r.route === 'A' ? 'ONE_SHOT_ENGINE' : 'CHAINED_ILO_SEQUENCE',
+      total_ilos: r.metadata?.total_ilos || 1,
+      next_step: r.route === 'A'
+        ? 'Paste this JSON into AI Studios or scaffold with React/PowerShell. Run ILO 1.'
+        : 'Run ILO 1 first. Pass its output into ILO 2. Continue chain until all ILOs complete.',
+      instruction: 'This is Part 1 of your progressive build. Each ILO in this JSON maps to one distinct micro-engine. Build them in order.'
+    }
+  };
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── COPY BUTTONS ──
+window.copyJson = function(){
+  var ta = document.getElementById('jsonPayload');
+  ta.select();
+  try{ document.execCommand('copy'); }catch(e){ if(navigator.clipboard) navigator.clipboard.writeText(ta.value); }
+  flashCopy('copyJsonBtn','✓ COPIED','COPY JSON');
+};
+
+window.copyAll = function(){
+  if(!lastResult) return;
+  var full = '=== BOTTLENECK SEQUENCER OUTPUT ===\n\n';
+  full += 'ROUTE: ' + lastResult.route + ' — ' + lastResult.route_label + '\n\n';
+  full += 'SUMMARY:\n' + (lastResult.voice_summary||'') + '\n\n';
+  full += 'DEPLOYMENT: ' + (lastResult.deployment?.primary||'') + '\n';
+  if(lastResult.deployment?.secondary) full += 'ALSO: ' + lastResult.deployment.secondary + '\n';
+  full += '\n=== PROGRESSIVE BUILD JSON ===\n\n';
+  full += document.getElementById('jsonPayload').value;
+  try{ navigator.clipboard.writeText(full); }catch(e){}
+  flashCopy('copyAllBtn','✓ FULL COPIED','COPY FULL PAYLOAD');
+};
+
+function flashCopy(id, onText, offText){
+  var btn = document.getElementById(id);
+  btn.textContent = onText;
+  btn.classList.add('copied');
+  clearTimeout(copyTimers[id]);
+  copyTimers[id] = setTimeout(function(){ btn.textContent = offText; btn.classList.remove('copied'); }, 2000);
+}
+
+// ── RESET ──
+window.resetAll = function(){
+  ['gatePayload','gateDesired','manualCompany','manualCategory','manualOffering','manualDesired','gfProduct','gfProblem','gfDesired'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  ['gateBtnRun','manualBtnRun','gfBtnRun'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.disabled = true;
+  });
+  document.getElementById('processingPanel').style.display = 'none';
+  document.getElementById('outputPanel').style.display = 'none';
+  document.getElementById('mainCard').style.display = 'block';
+  document.querySelector('.intake-toggle').style.display = 'flex';
+  var spinner = document.getElementById('procSpinner');
+  spinner.className = 'proc-spinner';
+  spinner.textContent = '';
+  document.getElementById('procBar').style.width = '0%';
+  document.getElementById('procBar').style.background = 'var(--grad)';
+  document.getElementById('procStage').className = 'proc-stage';
+  lastResult = null;
+  switchTab('gate');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+})();
+</script>
+</body>
+</html>
